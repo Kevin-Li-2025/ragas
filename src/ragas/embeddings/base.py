@@ -257,6 +257,15 @@ class BaseRagasEmbeddings(Embeddings, ABC):
         )
 
 
+def _safe_langchain_embedding_model_name(embeddings: Embeddings) -> str | None:
+    """Return a telemetry-safe model name for LangChain embeddings."""
+    for attr in ("model", "model_name"):
+        value = getattr(embeddings, attr, None)
+        if isinstance(value, str):
+            return value
+    return None
+
+
 class LangchainEmbeddingsWrapper(BaseRagasEmbeddings):
     """
     Wrapper for any embeddings from langchain.
@@ -305,7 +314,7 @@ class LangchainEmbeddingsWrapper(BaseRagasEmbeddings):
         track(
             EmbeddingUsageEvent(
                 provider="langchain",
-                model=getattr(self.embeddings, "model", None),
+                model=_safe_langchain_embedding_model_name(self.embeddings),
                 embedding_type="legacy",
                 num_requests=1,
                 is_async=False,
@@ -323,7 +332,7 @@ class LangchainEmbeddingsWrapper(BaseRagasEmbeddings):
         track(
             EmbeddingUsageEvent(
                 provider="langchain",
-                model=getattr(self.embeddings, "model", None),
+                model=_safe_langchain_embedding_model_name(self.embeddings),
                 embedding_type="legacy",
                 num_requests=len(texts),
                 is_async=False,
@@ -341,7 +350,7 @@ class LangchainEmbeddingsWrapper(BaseRagasEmbeddings):
         track(
             EmbeddingUsageEvent(
                 provider="langchain",
-                model=getattr(self.embeddings, "model", None),
+                model=_safe_langchain_embedding_model_name(self.embeddings),
                 embedding_type="legacy",
                 num_requests=1,
                 is_async=True,
@@ -359,7 +368,7 @@ class LangchainEmbeddingsWrapper(BaseRagasEmbeddings):
         track(
             EmbeddingUsageEvent(
                 provider="langchain",
-                model=getattr(self.embeddings, "model", None),
+                model=_safe_langchain_embedding_model_name(self.embeddings),
                 embedding_type="legacy",
                 num_requests=len(texts),
                 is_async=True,

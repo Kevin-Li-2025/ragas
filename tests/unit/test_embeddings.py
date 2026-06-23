@@ -1,5 +1,18 @@
 from __future__ import annotations
 
+import pytest
+
+
+class _ObjectModelEmbeddings:
+    model = object()
+    model_name = "fastembed-compatible-model"
+
+    def embed_query(self, text: str):
+        return [1.0]
+
+    def embed_documents(self, texts: list[str]):
+        return [[1.0] for _ in texts]
+
 
 def test_basic_legacy_imports():
     """Test that basic legacy imports work."""
@@ -76,3 +89,23 @@ def test_backward_compatibility_alias():
     # They should be the same class
     assert RagasBaseEmbedding is BaseRagasEmbedding
     print("Backward compatibility confirmed: RagasBaseEmbedding is BaseRagasEmbedding")
+
+
+def test_langchain_embedding_usage_event_accepts_non_string_model(monkeypatch):
+    """Telemetry should not fail when a LangChain embedding exposes a model object."""
+    import ragas.embeddings.base as base_module
+    from ragas.embeddings.base import LangchainEmbeddingsWrapper
+
+    events = []
+    monkeypatch.setattr(base_module, "track", events.append)
+
+    with pytest.warns(DeprecationWarning):
+        wrapper = LangchainEmbeddingsWrapper(_ObjectModelEmbeddings())
+
+    assert wrapper.embed_query("hello") == [1.0]
+    assert wrapper.embed_documents(["hello", "world"]) == [[1.0], [1.0]]
+
+    assert [event.model for event in events] == [
+        "fastembed-compatible-model",
+        "fastembed-compatible-model",
+    ]
