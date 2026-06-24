@@ -221,6 +221,73 @@ def test_llm_model_args_storage(mock_sync_client, monkeypatch):
     assert llm.model_args == model_args  # type: ignore
 
 
+@pytest.mark.parametrize(
+    "model",
+    [
+        "o1",
+        "o3-mini",
+        "o10",
+        "o10-mini",
+        "gpt-5",
+        "gpt-5-mini",
+        "gpt-5.1",
+        "gpt-5.1-mini",
+        "gpt-20",
+    ],
+)
+def test_openai_reasoning_models_use_max_completion_tokens(
+    model, mock_sync_client, monkeypatch
+):
+    """Reasoning models require max_completion_tokens instead of max_tokens."""
+
+    def mock_from_openai(client, mode=None):
+        return MockInstructor(client)
+
+    monkeypatch.setattr("instructor.from_openai", mock_from_openai)
+
+    llm = llm_factory(
+        model,
+        provider="openai",
+        client=mock_sync_client,
+        temperature=0.7,
+        max_tokens=1000,
+        top_p=0.9,
+    )
+
+    mapped_args = llm._map_provider_params()  # type: ignore[attr-defined]
+
+    assert mapped_args["max_completion_tokens"] == 1000
+    assert "max_tokens" not in mapped_args
+    assert mapped_args["temperature"] == 1.0
+    assert "top_p" not in mapped_args
+
+
+@pytest.mark.parametrize("model", ["gpt-4", "gpt-4o", "gpt-4.1", "gpt-4.1-mini"])
+def test_legacy_openai_models_keep_max_tokens(model, mock_sync_client, monkeypatch):
+    """Legacy OpenAI models keep their existing parameter names."""
+
+    def mock_from_openai(client, mode=None):
+        return MockInstructor(client)
+
+    monkeypatch.setattr("instructor.from_openai", mock_from_openai)
+
+    llm = llm_factory(
+        model,
+        provider="openai",
+        client=mock_sync_client,
+        temperature=0.7,
+        max_tokens=1000,
+        top_p=0.9,
+    )
+
+    mapped_args = llm._map_provider_params()  # type: ignore[attr-defined]
+
+    assert mapped_args["max_tokens"] == 1000
+    assert "max_completion_tokens" not in mapped_args
+    assert mapped_args["temperature"] == 0.7
+    assert mapped_args["top_p"] == 0.9
+
+
 def test_llm_factory_missing_client():
     """Test that missing client raises ValueError."""
     with pytest.raises(ValueError, match="requires a client instance"):
