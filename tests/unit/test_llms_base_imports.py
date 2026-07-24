@@ -21,11 +21,17 @@ def test_llms_base_imports_without_vertexai_provider():
                 raise ImportError(name)
             if name == "langchain_community.chat_models.vertexai":
                 raise ImportError(name)
+            if name == "langchain_community.llms" and "VertexAI" in fromlist:
+                raise ImportError(name)
             return real_import(name, globals, locals, fromlist, level)
 
         builtins.__import__ = fake_import
 
-        import ragas.llms.base  # noqa: F401
+        import ragas.llms.base as base
+
+        assert base.ChatVertexAI is None
+        assert base.VertexAI is None
+        assert None not in base.MULTIPLE_COMPLETION_SUPPORTED
         """
     )
 
